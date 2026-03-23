@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI室内改造生成器 - Az设计工作室</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .loading-spinner { border-top-color: #000; animation: spinner 1.5s linear infinite; }
+    @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+
+<body class="bg-white text-gray-900 font-sans">
+
+<section id="hero" class="min-h-screen flex flex-col justify-center items-center px-4 text-center">
+  <div class="mb-8">
+    <span class="bg-gray-100 px-3 py-1 rounded-full text-xs font-medium text-gray-500">AI 驱动 · 室内设计 2.0</span>
+  </div>
+  <h1 class="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight">
+    你的毛坯房，<br><span class="text-gray-400">可以提前看到装修效果</span>
+  </h1>
+  <p class="text-gray-500 mb-10 text-lg">
+    上传照片 + 选择风格，30秒生成高质量设计图
+  </p>
+
+  <div class="w-full max-w-md bg-gray-50 p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+    <div class="text-left">
+      <label class="text-sm font-semibold ml-1">1. 上传你的毛坯房照片</label>
+      <input id="roomInput" type="file" accept="image/*" class="w-full mt-2 bg-white border p-3 rounded-xl text-sm" />
+    </div>
+    <div class="text-left">
+      <label class="text-sm font-semibold ml-1">2. 上传你喜欢的风格图 (可选)</label>
+      <input id="styleInput" type="file" accept="image/*" class="w-full mt-2 bg-white border p-3 rounded-xl text-sm" />
+    </div>
+
+    <button id="generateBtn"
+      class="w-full bg-black text-white py-4 rounded-2xl text-lg font-bold shadow-lg hover:scale-[1.02] transition-transform disabled:opacity-30 disabled:cursor-not-allowed"
+      disabled>
+      立即生成效果图
+    </button>
+
+    <div class="flex justify-center items-center gap-4 text-xs text-gray-400">
+      <span>免费试用 3 次</span>
+      <span>•</span>
+      <span>无需登录</span>
+      <span>•</span>
+      <span>已有 2,137 人使用</span>
+    </div>
+  </div>
+</section>
+
+<section id="loading" class="hidden min-h-screen flex flex-col justify-center items-center text-center px-6">
+  <div class="w-16 h-16 border-4 border-gray-200 border-t-black rounded-full loading-spinner mb-6"></div>
+  <p class="text-2xl font-bold italic">AI 正在分析空间结构...</p>
+  <p class="text-gray-400 mt-3 text-sm max-w-xs">正在根据你的房型进行光影渲染与材质拼装，约需 20-30 秒</p>
+</section>
+
+<section id="result" class="hidden py-16 px-4 text-center max-w-5xl mx-auto">
+  <h2 class="text-3xl font-bold tracking-tight">方案已生成！</h2>
+  <p class="text-gray-500 mt-3">已为你生成 3 套深度优化方案，解锁查看 4K 高清图</p>
+
+  <div id="previewGrid" class="grid md:grid-cols-3 gap-6 mt-10"></div>
+
+  <div class="mt-12 bg-gray-50 p-8 rounded-3xl border border-gray-100 max-w-lg mx-auto">
+    <h3 class="font-bold text-xl mb-6">选择解锁方案</h3>
+    <div class="space-y-3">
+      <label class="flex items-center justify-between p-4 bg-white border-2 border-black rounded-2xl cursor-pointer">
+        <div class="flex items-center gap-3">
+          <input type="radio" name="plan" checked class="w-5 h-5 accent-black">
+          <span class="font-bold">单次解锁</span>
+        </div>
+        <span class="text-xl font-black">¥9.9</span>
+      </label>
+      <label class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-2xl cursor-pointer hover:border-black transition-colors">
+        <div class="flex items-center gap-3">
+          <input type="radio" name="plan" class="w-5 h-5 accent-black">
+          <span class="font-bold">5次套餐 (推荐)</span>
+        </div>
+        <span class="text-xl font-black text-red-500">¥29</span>
+      </label>
+    </div>
+
+    <button id="payBtn" class="w-full mt-8 bg-black text-white py-4 rounded-2xl text-lg font-bold shadow-xl">
+      获取高清效果图
+    </button>
+  </div>
+</section>
+
+<section id="success" class="hidden py-16 px-4 text-center max-w-6xl mx-auto">
+  <div class="mb-6 inline-block bg-green-100 text-green-600 px-4 py-1 rounded-full font-bold text-sm">🎉 支付成功 · 高清图已解锁</div>
+  <h2 class="text-3xl font-bold mb-10 text-gray-800">你的专属装修设计方案</h2>
+
+  <div id="resultGrid" class="grid md:grid-cols-3 gap-6"></div>
+
+  <div class="mt-12 max-w-2xl mx-auto text-left bg-black text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+    <div class="absolute top-0 right-0 p-4 opacity-20 text-4xl font-black italic">RED</div>
+    <p class="text-xs uppercase tracking-widest text-gray-400 mb-2 font-bold">小红书爆款文案参考</p>
+    <p id="copyTitle" class="text-xl font-bold mb-3"></p>
+    <p id="copyBody" class="text-gray-300 text-sm leading-relaxed mb-6"></p>
+    <button onclick="copyText()" class="bg-white text-black px-6 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors">
+      一键复制文案
+    </button>
+  </div>
+
+  <div class="mt-10 flex flex-wrap justify-center gap-4">
+    <button onclick="downloadImages()" class="bg-gray-100 text-black px-8 py-3 rounded-2xl font-bold hover:bg-gray-200">下载全部 4K 原图</button>
+    <button onclick="location.reload()" class="bg-white border border-gray-200 px-8 py-3 rounded-2xl font-bold hover:border-black">再次生成</button>
+  </div>
+</section>
+
+<script>
+// 配置中心 (后续在此填入你的 Dify API)
+const API_CONFIG = {
+  endpoint: 'https://api.dify.ai/v1/workflows/run',
+  apiKey: 'YOUR_DIFY_API_KEY' // 暂时为空，保持模拟流程
+};
+
+const roomInput = document.getElementById("roomInput");
+const generateBtn = document.getElementById("generateBtn");
+let generatedImages = [];
+
+// 状态检查
+roomInput.addEventListener("change", () => {
+  if (roomInput.files.length > 0) {
+    generateBtn.disabled = false;
+  }
+});
+
+// 主生成逻辑
+generateBtn.addEventListener("click", async () => {
+  document.getElementById("hero").classList.add("hidden");
+  document.getElementById("loading").classList.remove("hidden");
+
+  // 模拟 AI 生成过程 (如果接入 Dify 可替换为 fetch)
+  setTimeout(() => {
+    generatedImages = [
+      `https://picsum.photos/seed/${Math.random()}/800/1000`,
+      `https://picsum.photos/seed/${Math.random()}/800/1000`,
+      `https://picsum.photos/seed/${Math.random()}/800/1000`
+    ];
+
+    const grid = document.getElementById("previewGrid");
+    grid.innerHTML = generatedImages.map(img => `
+      <div class="relative group overflow-hidden rounded-3xl shadow-lg aspect-[4/5]">
+        <img src="${img}" class="w-full h-full object-cover blur-xl grayscale" />
+        <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white">
+          <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          <span class="font-bold text-sm tracking-widest">付费解锁高清</span>
+        </div>
+      </div>
+    `).join("");
+
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("result").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }, 2500);
+});
+
+// 支付模拟逻辑
+document.getElementById("payBtn").addEventListener("click", () => {
+  const btn = document.getElementById("payBtn");
+  btn.innerText = "正在拉起支付...";
+  
+  // 模拟成功
+  setTimeout(() => {
+    const grid = document.getElementById("resultGrid");
+    grid.innerHTML = generatedImages.map(img => `
+      <div class="rounded-3xl shadow-2xl overflow-hidden aspect-[4/5]">
+        <img src="${img}" class="w-full h-full object-cover" />
+      </div>
+    `).join("");
+
+    document.getElementById("copyTitle").innerText = "谁懂啊！毛坯房居然被 AI 改成了顶级法式风 😭";
+    document.getElementById("copyBody").innerText = "原本以为家里这采光没救了，AI 直接给我出了这套奶油色方案！大白墙+法式石膏线，空间感直接拉满，建议所有准备装修的姐妹都去试一下这个 AI 工具，真的省下几千块设计费！✨ #装修灵感 #小众设计 #AI室内设计 #我的装修日记";
+
+    document.getElementById("result").classList.add("hidden");
+    document.getElementById("success").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }, 1500);
+});
+
+function downloadImages() {
+  generatedImages.forEach((url, i) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Az_Design_Plan_${i+1}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+}
+
+function copyText() {
+  const text = document.getElementById("copyTitle").innerText + "\n\n" + document.getElementById("copyBody").innerText;
+  navigator.clipboard.writeText(text);
+  alert("爆款文案已复制，快去发小红书吧！");
+}
+</script>
+
+</body>
+</html>
