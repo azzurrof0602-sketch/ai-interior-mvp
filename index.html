@@ -1,202 +1,593 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI室内改造生成器 - Az设计工作室</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .loading-spinner { border-top-color: #000; animation: spinner 1.5s linear infinite; }
-    @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>空间诗 · 活力AI改造</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<!-- 引入更现代、活力的无衬线字体 -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #8b5cf6; /* 活力紫 */
+  --secondary: #3b82f6; /* 亮蓝色 */
+  --text-main: #ffffff;
+  --text-sub: rgba(255, 255, 255, 0.65);
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 32px 64px rgba(0, 0, 0, 0.3);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  /* 全屏底图 + 极光渐变遮罩，给毛玻璃提供绚丽的背景底色 */
+  background-color: #0b0f19;
+  background-image: 
+    linear-gradient(135deg, rgba(23, 15, 54, 0.85) 0%, rgba(20, 40, 80, 0.75) 100%),
+    url('https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=2000&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: var(--text-main);
+  font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 模拟参考图中的环境光晕 (极光效果) */
+body::before, body::after {
+  content: ''; position: fixed; border-radius: 50%; z-index: -1;
+  filter: blur(120px); pointer-events: none; animation: float 12s ease-in-out infinite alternate;
+}
+body::before {
+  top: -10%; left: -10%; width: 50vw; height: 50vw;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%);
+}
+body::after {
+  bottom: -20%; right: -10%; width: 60vw; height: 60vw;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+  animation-delay: -5s; animation-direction: alternate-reverse;
+}
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(50px, -50px) scale(1.1); }
+}
+
+/* ── 公用玻璃态类 ── */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.1);
+  border-radius: 32px;
+}
+
+/* ── HERO ── */
+#hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 80px 24px 100px; position: relative;
+}
+
+.badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 99px; padding: 8px 20px;
+  font-size: 13px; font-weight: 400; color: #fff; letter-spacing: 0.08em;
+  margin-bottom: 30px;
+}
+.badge-dot {
+  width: 8px; height: 8px; background: #34d399; /* 荧光绿点缀 */
+  border-radius: 50%; box-shadow: 0 0 10px #34d399;
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+.hero-title {
+  /* 还原参考图那种极细、巨大的现代字体感觉 */
+  font-size: clamp(48px, 10vw, 96px);
+  font-weight: 200; line-height: 1.1;
+  text-align: center; letter-spacing: 2px;
+  margin-bottom: 20px;
+  text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.hero-title span { 
+  font-weight: 500; 
+  background: linear-gradient(to right, #a78bfa, #60a5fa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.hero-sub {
+  font-size: 16px; color: var(--text-sub);
+  text-align: center; line-height: 1.8;
+  max-width: 440px; margin-bottom: 50px; font-weight: 300;
+}
+
+/* ── CARD ── */
+.card { padding: 40px; width: 100%; max-width: 520px; }
+
+.label-row {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px; color: var(--text-sub);
+  letter-spacing: 0.15em; text-transform: uppercase;
+  margin-bottom: 16px; margin-top: 32px; font-weight: 500;
+}
+.label-row:first-of-type { margin-top: 0; }
+.label-row::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
+
+.upload-zone {
+  border: 2px dashed rgba(255,255,255,0.3); border-radius: 24px;
+  padding: 40px 20px; text-align: center;
+  cursor: pointer; position: relative;
+  transition: all .3s ease; background: rgba(0,0,0,0.2); overflow: hidden;
+}
+.upload-zone:hover { border-color: var(--primary); background: rgba(139, 92, 246, 0.1); }
+.upload-zone.filled { border-style: solid; border-color: var(--secondary); background: rgba(0,0,0,0.4); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; z-index: 2; }
+.upload-icon { font-size: 40px; margin-bottom: 12px; display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
+.upload-hint { font-size: 14px; color: var(--text-sub); line-height: 1.6; }
+.upload-hint b { color: #fff; font-weight: 500; }
+#roomPreview { display: none; width: 100%; height: 180px; object-fit: cover; border-radius: 16px; position: relative; z-index: 1;}
+
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip {
+  padding: 10px 20px; border-radius: 99px;
+  border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05);
+  font-size: 13.5px; color: var(--text-sub);
+  cursor: pointer; transition: all .3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  font-weight: 400;
+}
+.chip:hover { background: rgba(255,255,255,0.15); color: #fff; transform: translateY(-2px); }
+.chip.on { 
+  background: #fff; border-color: #fff; color: #0b0f19; font-weight: 500; 
+  box-shadow: 0 4px 15px rgba(255,255,255,0.3);
+}
+
+.gen-btn {
+  display: block; width: 100%; margin-top: 40px;
+  padding: 20px; border-radius: 99px; border: none;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: #fff; font-size: 18px; font-weight: 500; letter-spacing: 0.05em;
+  cursor: pointer; position: relative; overflow: hidden;
+  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+  transition: all .3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.gen-btn::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.3), rgba(255,255,255,0));
+  transform: translateX(-100%); transition: transform .6s ease;
+}
+.gen-btn:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.6);
+}
+.gen-btn:hover:not(:disabled)::before { transform: translateX(100%); }
+.gen-btn:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(1); box-shadow: none; }
+
+.meta-row {
+  display: flex; justify-content: center; gap: 18px;
+  margin-top: 24px; font-size: 12px; color: rgba(255,255,255,0.4);
+}
+
+/* ── LOADING ── */
+#loading {
+  display: none; min-height: 100vh;
+  flex-direction: column; align-items: center; justify-content: center;
+}
+.spinner-wrap { position: relative; width: 90px; height: 90px; margin-bottom: 40px; }
+.spin-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--secondary);
+  animation: spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+.spin-ring.inner {
+  inset: 15px; border-top-color: var(--primary);
+  animation-duration: 2s; animation-direction: reverse;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.load-title { font-size: 32px; font-weight: 500; margin-bottom: 12px; letter-spacing: 1px; }
+.load-sub { font-size: 15px; color: var(--text-sub); margin-bottom: 50px; }
+.steps { display: flex; flex-direction: column; gap: 16px; width: 300px; }
+.step {
+  display: flex; align-items: center; gap: 16px;
+  font-size: 15px; color: rgba(255,255,255,0.3); transition: all .4s;
+  padding: 12px 20px; border-radius: 16px; background: rgba(0,0,0,0.2);
+}
+.step.active { color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 0 20px rgba(255,255,255,0.05); }
+.step.done   { color: #34d399; }
+.step-ico { font-size: 20px; width: 24px; text-align: center; }
+
+/* ── RESULT & SUCCESS ── */
+#result, #success {
+  display: none; min-height: 100vh;
+  padding: 100px 24px; max-width: 1140px; margin: 0 auto; position: relative; z-index: 10;
+}
+.sec-label { font-size: 13px; color: var(--primary); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px; font-weight: 600; }
+.sec-title { font-size: clamp(32px, 5vw, 54px); font-weight: 300; margin-bottom: 12px; letter-spacing: 1px; }
+.sec-sub { font-size: 16px; color: var(--text-sub); margin-bottom: 60px; font-weight: 300; }
+
+.preview-grid, .result-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 60px;
+}
+.preview-card, .result-card {
+  border-radius: 28px; overflow: hidden; aspect-ratio: 3/4; position: relative;
+  border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+.preview-card img {
+  width: 100%; height: 100%; object-fit: cover;
+  filter: blur(15px) brightness(0.6); transform: scale(1.1);
+}
+.result-card img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+.result-card:hover img { transform: scale(1.05); }
+
+.prev-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px; background: rgba(15, 12, 41, 0.4);
+}
+.lock-circle {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+}
+.lock-lbl { font-size: 13px; color: #fff; letter-spacing: 0.1em; }
+.plan-tag, .result-tag {
+  position: absolute; top: 20px; left: 20px;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 18px; border-radius: 99px; font-size: 13px; color: #fff; font-weight: 400;
+}
+.result-tag { top: auto; bottom: 20px; }
+
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+
+/* pricing */
+.pricing-card { padding: 40px; }
+.pricing-ttl { font-size: 28px; font-weight: 300; margin-bottom: 30px; letter-spacing: 1px; }
+.price-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);
+  cursor: pointer; margin-bottom: 16px; transition: all .3s ease;
+}
+.price-row:hover { background: rgba(255,255,255,0.05); }
+.price-row.on { border-color: var(--primary); background: rgba(139, 92, 246, 0.15); box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
+.price-left { display: flex; align-items: center; gap: 16px; }
+.radio-o {
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);
+  position: relative; flex-shrink: 0; transition: all .3s;
+}
+.price-row.on .radio-o { border-color: var(--primary); }
+.price-row.on .radio-o::after {
+  content: ''; position: absolute; inset: 4px; border-radius: 50%; background: var(--primary);
+}
+.price-name { font-size: 16px; font-weight: 400; }
+.price-tag-pill {
+  font-size: 11px; background: linear-gradient(135deg, #f43f5e, #fb923c); color: #fff;
+  padding: 4px 10px; border-radius: 99px; margin-left: 10px; font-weight: 500;
+}
+.price-num { font-size: 24px; font-weight: 500; }
+.price-num.hot { background: linear-gradient(to right, #f43f5e, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+.pay-btn {
+  width: 100%; margin-top: 24px; padding: 20px; border-radius: 99px; border: none;
+  background: #fff; color: #0b0f19; font-size: 18px; font-weight: 600; cursor: pointer;
+  transition: all .3s; box-shadow: 0 10px 30px rgba(255,255,255,0.2);
+}
+.pay-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 40px rgba(255,255,255,0.4); }
+
+/* analysis */
+.analysis-card { padding: 0; overflow: hidden; }
+.analysis-head {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(59, 130, 246, 0.4));
+  padding: 30px 36px; border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.analysis-eyebrow { font-size: 12px; letter-spacing: 0.25em; color: rgba(255,255,255,0.7); margin-bottom: 8px; font-weight: 500; }
+.analysis-htitle { font-size: 24px; font-weight: 300; }
+.analysis-body {
+  padding: 36px; font-size: 15px; color: rgba(255,255,255,0.85); line-height: 2.2; min-height: 200px; font-weight: 300;
+}
+.analysis-body .tag { color: var(--secondary); font-weight: 500; background: rgba(59, 130, 246, 0.1); padding: 2px 8px; border-radius: 6px; margin-right: 4px;}
+.a-loading { color: var(--text-sub); display: flex; align-items: center; gap: 10px; }
+.dot-ani::after { content: ''; animation: dots 1.5s infinite; }
+@keyframes dots { 0%{content:''} 33%{content:'.'} 66%{content:'..'} 100%{content:'...'} }
+
+/* ── SUCCESS ADDONS ── */
+.ok-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3);
+  padding: 8px 20px; border-radius: 99px; font-size: 14px; font-weight: 500; margin-bottom: 40px;
+}
+.copy-wrap { margin-top: 60px; padding: 0; overflow: hidden; }
+.copy-top { padding: 50px 56px; position: relative; }
+.copy-top::before {
+  content: '小红书'; position: absolute; right: 40px; top: 30px;
+  font-size: 80px; font-weight: 600; opacity: 0.03; pointer-events: none;
+}
+.copy-eyebrow { font-size: 12px; letter-spacing: 0.2em; color: var(--primary); margin-bottom: 20px; font-weight: 600;}
+#copyTitle { font-size: 28px; font-weight: 400; line-height: 1.5; margin-bottom: 24px; }
+#copyBody { font-size: 16px; color: var(--text-sub); line-height: 2.2; max-width: 680px; white-space: pre-wrap;}
+.copy-bottom {
+  background: rgba(0,0,0,0.3); padding: 24px 56px; border-top: 1px solid rgba(255,255,255,0.05);
+  display: flex; gap: 16px; align-items: center;
+}
+.cbtn {
+  padding: 12px 32px; border-radius: 99px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all .3s;
+}
+.cbtn-fill { background: linear-gradient(135deg, #f43f5e, #fb923c); color: #fff; border: none; box-shadow: 0 8px 20px rgba(244, 63, 94, 0.3); }
+.cbtn-fill:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(244, 63, 94, 0.5); }
+.cbtn-out { background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+.cbtn-out:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
+
+.act-row { display: flex; justify-content: center; gap: 20px; margin-top: 60px; flex-wrap: wrap; }
+.abtn { padding: 18px 40px; border-radius: 99px; font-size: 16px; font-weight: 500; cursor: pointer; transition: all .3s; }
+.abtn-dark { background: #fff; color: #0b0f19; border: none; box-shadow: 0 10px 30px rgba(255,255,255,0.2); }
+.abtn-dark:hover { transform: translateY(-2px); box-shadow: 0 15px 40px rgba(255,255,255,0.4); }
+.abtn-light { background: rgba(0,0,0,0.4); color: #fff; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(10px); }
+.abtn-light:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
+
+@media (max-width: 768px) {
+  .preview-grid, .result-grid, .bottom-grid { grid-template-columns: 1fr; }
+  .card, .pricing-card { padding: 30px 24px; }
+  .copy-top, .copy-bottom { padding: 30px 24px; }
+  .hero-title { font-size: 48px; }
+}
+
+/* 进场动画 */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+.fi { animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.fi:nth-child(1){ animation-delay: 0.1s }
+.fi:nth-child(2){ animation-delay: 0.2s }
+.fi:nth-child(3){ animation-delay: 0.3s }
+.fi:nth-child(4){ animation-delay: 0.4s }
+</style>
 </head>
+<body>
 
-<body class="bg-white text-gray-900 font-sans">
+<!-- HERO -->
+<section id="hero">
+  <div class="badge fi"><span class="badge-dot"></span>AI Powered · 智能空间重塑</div>
+  <h1 class="hero-title fi">Illuminate<br><span>Your Space.</span></h1>
+  <p class="hero-sub fi">上传一张毛坯房或旧房照片，选择你偏好的设计语境。<br>只需 30 秒，AI 为你生成沉浸式重塑方案与社媒文案。</p>
 
-<section id="hero" class="min-h-screen flex flex-col justify-center items-center px-4 text-center">
-  <div class="mb-8">
-    <span class="bg-gray-100 px-3 py-1 rounded-full text-xs font-medium text-gray-500">AI 驱动 · 室内设计 2.0</span>
+  <div class="card glass-panel fi">
+    <div class="label-row">Upload Image</div>
+    <div class="upload-zone" id="roomZone">
+      <input type="file" id="roomInput" accept="image/*">
+      <img id="roomPreview">
+      <div id="uploadHint">
+        <span class="upload-icon">✨</span>
+        <div class="upload-hint"><b>点击或拖拽上传空间照片</b><br>支持 JPG / PNG · 建议提供宽景视角</div>
+      </div>
+    </div>
+
+    <div class="label-row">Select Aesthetic</div>
+    <div class="chips">
+      <span class="chip on" data-s="赛博未来">🔮 赛博未来</span>
+      <span class="chip" data-s="极简高定">💎 极简高定</span>
+      <span class="chip" data-s="法式奶油">🥐 法式奶油</span>
+      <span class="chip" data-s="侘寂静心">🍃 侘寂静心</span>
+      <span class="chip" data-s="复古摩登">💿 复古摩登</span>
+      <span class="chip" data-s="自然氧吧">🌿 自然氧吧</span>
+    </div>
+
+    <button class="gen-btn" id="generateBtn" disabled>Generate Magic ✨</button>
   </div>
-  <h1 class="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight">
-    你的毛坯房，<br><span class="text-gray-400">可以提前看到装修效果</span>
-  </h1>
-  <p class="text-gray-500 mb-10 text-lg">
-    上传照片 + 选择风格，30秒生成高质量设计图
-  </p>
+</section>
 
-  <div class="w-full max-w-md bg-gray-50 p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-    <div class="text-left">
-      <label class="text-sm font-semibold ml-1">1. 上传你的毛坯房照片</label>
-      <input id="roomInput" type="file" accept="image/*" class="w-full mt-2 bg-white border p-3 rounded-xl text-sm" />
+<!-- LOADING -->
+<section id="loading">
+  <div class="spinner-wrap">
+    <div class="spin-ring"></div>
+    <div class="spin-ring inner"></div>
+  </div>
+  <div class="load-title">AI Vision is processing...</div>
+  <div class="load-sub">正在重构空间几何与光影场域，预计需 20–30 秒</div>
+  <div class="steps">
+    <div class="step active" id="s1"><span class="step-ico">👁️</span>解析空间深度与原始采光</div>
+    <div class="step" id="s2"><span class="step-ico">🎨</span>注入风格美学与材质贴图</div>
+    <div class="step" id="s3"><span class="step-ico">⚡</span>光线追踪与高清渲染</div>
+    <div class="step" id="s4"><span class="step-ico">🧠</span>生成空间分析与自媒体灵感</div>
+  </div>
+</section>
+
+<!-- RESULT -->
+<section id="result">
+  <div class="sec-label">Preview generated</div>
+  <div class="sec-title">空间方案已重塑</div>
+  <div class="sec-sub">解锁你的 3 套 4K 沉浸式效果图 · AI 数据分析 · 小红书爆款文案</div>
+  <div class="preview-grid" id="previewGrid"></div>
+
+  <div class="bottom-grid">
+    <div class="pricing-card glass-panel">
+      <div class="pricing-ttl">解锁高清方案</div>
+      <div class="price-row on" onclick="pickPlan(this)">
+        <div class="price-left"><div class="radio-o"></div><span class="price-name">单次唤醒</span></div>
+        <span class="price-num">¥9.9</span>
+      </div>
+      <div class="price-row" onclick="pickPlan(this)">
+        <div class="price-left"><div class="radio-o"></div><span class="price-name">5 次创作者包</span><span class="price-tag-pill">HOT</span></div>
+        <span class="price-num hot">¥29</span>
+      </div>
+      <div class="price-row" onclick="pickPlan(this)">
+        <div class="price-left"><div class="radio-o"></div><span class="price-name">无限灵感通行证</span></div>
+        <span class="price-num">¥79</span>
+      </div>
+      <button class="pay-btn" id="payBtn">Unlock Premium Vision →</button>
     </div>
-    <div class="text-left">
-      <label class="text-sm font-semibold ml-1">2. 上传你喜欢的风格图 (可选)</label>
-      <input id="styleInput" type="file" accept="image/*" class="w-full mt-2 bg-white border p-3 rounded-xl text-sm" />
-    </div>
 
-    <button id="generateBtn"
-      class="w-full bg-black text-white py-4 rounded-2xl text-lg font-bold shadow-lg hover:scale-[1.02] transition-transform disabled:opacity-30 disabled:cursor-not-allowed"
-      disabled>
-      立即生成效果图
-    </button>
-
-    <div class="flex justify-center items-center gap-4 text-xs text-gray-400">
-      <span>免费试用 3 次</span>
-      <span>•</span>
-      <span>无需登录</span>
-      <span>•</span>
-      <span>已有 2,137 人使用</span>
+    <div class="analysis-card glass-panel">
+      <div class="analysis-head">
+        <div class="analysis-eyebrow">NEURAL SPACE ANALYSIS</div>
+        <div class="analysis-htitle">AI 空间解构报告</div>
+      </div>
+      <div class="analysis-body" id="analysisBody">
+        <div class="a-loading">🔮 神经网络正在解读空间特征<span class="dot-ani"></span></div>
+      </div>
     </div>
   </div>
 </section>
 
-<section id="loading" class="hidden min-h-screen flex flex-col justify-center items-center text-center px-6">
-  <div class="w-16 h-16 border-4 border-gray-200 border-t-black rounded-full loading-spinner mb-6"></div>
-  <p class="text-2xl font-bold italic">AI 正在分析空间结构...</p>
-  <p class="text-gray-400 mt-3 text-sm max-w-xs">正在根据你的房型进行光影渲染与材质拼装，约需 20-30 秒</p>
-</section>
+<!-- SUCCESS -->
+<section id="success">
+  <div class="ok-badge">✓ 4K Vision Unlocked</div>
+  <div class="sec-label">Your final render</div>
+  <div class="sec-title">最终重塑成果</div>
+  <div class="result-grid" id="resultGrid"></div>
 
-<section id="result" class="hidden py-16 px-4 text-center max-w-5xl mx-auto">
-  <h2 class="text-3xl font-bold tracking-tight">方案已生成！</h2>
-  <p class="text-gray-500 mt-3">已为你生成 3 套深度优化方案，解锁查看 4K 高清图</p>
-
-  <div id="previewGrid" class="grid md:grid-cols-3 gap-6 mt-10"></div>
-
-  <div class="mt-12 bg-gray-50 p-8 rounded-3xl border border-gray-100 max-w-lg mx-auto">
-    <h3 class="font-bold text-xl mb-6">选择解锁方案</h3>
-    <div class="space-y-3">
-      <label class="flex items-center justify-between p-4 bg-white border-2 border-black rounded-2xl cursor-pointer">
-        <div class="flex items-center gap-3">
-          <input type="radio" name="plan" checked class="w-5 h-5 accent-black">
-          <span class="font-bold">单次解锁</span>
-        </div>
-        <span class="text-xl font-black">¥9.9</span>
-      </label>
-      <label class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-2xl cursor-pointer hover:border-black transition-colors">
-        <div class="flex items-center gap-3">
-          <input type="radio" name="plan" class="w-5 h-5 accent-black">
-          <span class="font-bold">5次套餐 (推荐)</span>
-        </div>
-        <span class="text-xl font-black text-red-500">¥29</span>
-      </label>
+  <div class="copy-wrap glass-panel">
+    <div class="copy-top">
+      <div class="copy-eyebrow">SOCIAL MEDIA COPYWRITER</div>
+      <div id="copyTitle">生成中…</div>
+      <div id="copyBody"></div>
     </div>
-
-    <button id="payBtn" class="w-full mt-8 bg-black text-white py-4 rounded-2xl text-lg font-bold shadow-xl">
-      获取高清效果图
-    </button>
-  </div>
-</section>
-
-<section id="success" class="hidden py-16 px-4 text-center max-w-6xl mx-auto">
-  <div class="mb-6 inline-block bg-green-100 text-green-600 px-4 py-1 rounded-full font-bold text-sm">🎉 支付成功 · 高清图已解锁</div>
-  <h2 class="text-3xl font-bold mb-10 text-gray-800">你的专属装修设计方案</h2>
-
-  <div id="resultGrid" class="grid md:grid-cols-3 gap-6"></div>
-
-  <div class="mt-12 max-w-2xl mx-auto text-left bg-black text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-    <div class="absolute top-0 right-0 p-4 opacity-20 text-4xl font-black italic">RED</div>
-    <p class="text-xs uppercase tracking-widest text-gray-400 mb-2 font-bold">小红书爆款文案参考</p>
-    <p id="copyTitle" class="text-xl font-bold mb-3"></p>
-    <p id="copyBody" class="text-gray-300 text-sm leading-relaxed mb-6"></p>
-    <button onclick="copyText()" class="bg-white text-black px-6 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors">
-      一键复制文案
-    </button>
+    <div class="copy-bottom">
+      <button class="cbtn cbtn-fill" onclick="doCopy()">一键复制发布</button>
+      <button class="cbtn cbtn-out" onclick="regenCopy()">换个语气重写</button>
+    </div>
   </div>
 
-  <div class="mt-10 flex flex-wrap justify-center gap-4">
-    <button onclick="downloadImages()" class="bg-gray-100 text-black px-8 py-3 rounded-2xl font-bold hover:bg-gray-200">下载全部 4K 原图</button>
-    <button onclick="location.reload()" class="bg-white border border-gray-200 px-8 py-3 rounded-2xl font-bold hover:border-black">再次生成</button>
+  <div class="act-row">
+    <button class="abtn abtn-dark" onclick="downloadImages()">Download 4K Assets</button>
+    <button class="abtn abtn-light" onclick="location.reload()">Start New Project</button>
   </div>
 </section>
 
 <script>
-// 配置中心 (后续在此填入你的 Dify API)
-const API_CONFIG = {
-  endpoint: 'https://api.dify.ai/v1/workflows/run',
-  apiKey: 'YOUR_DIFY_API_KEY' // 暂时为空，保持模拟流程
-};
+let imgs = [], style = '赛博未来', b64 = null;
+let copyContent = { title: '', body: '' };
 
-const roomInput = document.getElementById("roomInput");
-const generateBtn = document.getElementById("generateBtn");
-let generatedImages = [];
-
-// 状态检查
-roomInput.addEventListener("change", () => {
-  if (roomInput.files.length > 0) {
-    generateBtn.disabled = false;
-  }
+// Chips 交互
+document.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+    c.classList.add('on'); style = c.dataset.s;
+  });
 });
 
-// 主生成逻辑
-generateBtn.addEventListener("click", async () => {
-  document.getElementById("hero").classList.add("hidden");
-  document.getElementById("loading").classList.remove("hidden");
-
-  // 模拟 AI 生成过程 (如果接入 Dify 可替换为 fetch)
-  setTimeout(() => {
-    generatedImages = [
-      `https://picsum.photos/seed/${Math.random()}/800/1000`,
-      `https://picsum.photos/seed/${Math.random()}/800/1000`,
-      `https://picsum.photos/seed/${Math.random()}/800/1000`
-    ];
-
-    const grid = document.getElementById("previewGrid");
-    grid.innerHTML = generatedImages.map(img => `
-      <div class="relative group overflow-hidden rounded-3xl shadow-lg aspect-[4/5]">
-        <img src="${img}" class="w-full h-full object-cover blur-xl grayscale" />
-        <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white">
-          <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          <span class="font-bold text-sm tracking-widest">付费解锁高清</span>
-        </div>
-      </div>
-    `).join("");
-
-    document.getElementById("loading").classList.add("hidden");
-    document.getElementById("result").classList.remove("hidden");
-    window.scrollTo(0, 0);
-  }, 2500);
+// 图片上传交互
+const roomInput = document.getElementById('roomInput');
+const genBtn = document.getElementById('generateBtn');
+roomInput.addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const p = document.getElementById('roomPreview');
+    p.src = ev.target.result; p.style.display = 'block';
+    document.getElementById('uploadHint').style.display = 'none';
+    document.getElementById('roomZone').classList.add('filled');
+    genBtn.disabled = false;
+    b64 = ev.target.result.split(',')[1];
+  };
+  reader.readAsDataURL(f);
 });
 
-// 支付模拟逻辑
-document.getElementById("payBtn").addEventListener("click", () => {
-  const btn = document.getElementById("payBtn");
-  btn.innerText = "正在拉起支付...";
+// 套餐选择
+function pickPlan(el) {
+  document.querySelectorAll('.price-row').forEach(r => r.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// 进度条动画
+function runSteps() {
+  const ids = ['s1','s2','s3','s4']; let i = 0;
+  const tick = () => {
+    if (i > 0) { const prev = document.getElementById(ids[i-1]); prev.classList.remove('active'); prev.classList.add('done'); }
+    if (i < ids.length) { document.getElementById(ids[i]).classList.add('active'); i++; setTimeout(tick, 800); }
+  };
+  tick();
+}
+
+// 模拟 API 逻辑 (为了直接看效果，做了稳定的 Mock 数据降级)
+async function fetchAIContent() {
+  // 模拟请求延迟
+  await new Promise(r => setTimeout(r, 2000));
   
-  // 模拟成功
-  setTimeout(() => {
-    const grid = document.getElementById("resultGrid");
-    grid.innerHTML = generatedImages.map(img => `
-      <div class="rounded-3xl shadow-2xl overflow-hidden aspect-[4/5]">
-        <img src="${img}" class="w-full h-full object-cover" />
+  // 假装获取到的 AI 数据
+  document.getElementById('analysisBody').innerHTML =
+    `<span class="tag">【原始基底】</span>层高优势明显，但动线略显割裂，采光纵深存在断层。<br><br>` +
+    `<span class="tag">【重塑核心】</span>打通视觉隔断强化流动性；采用悬浮式隐形收纳；引入智能环境光系统弥补暗角。<br><br>` +
+    `<span class="tag">【材质光影】</span>以高定冷灰微水泥打底，辅以发光亚克力与拉丝金属，拉满${style}的视觉张力。<br><br>` +
+    `<span class="tag">【落地预估】</span>改造难度极高，智能系统布线需前置，硬装+软装预估 20–35 W。`;
+    
+  copyContent.title = `绝了！用AI把老破小爆改成 ${style} 风格 😭✨`;
+  copyContent.body  = `家人们谁懂啊！原本还在发愁怎么装修，随手把毛坯房照片丢给AI，生成的这套【${style}】方案直接戳中我心巴上了！！\n\n对比之前的叙利亚风，现在整个空间的呼吸感和未来感简直拉满。悬浮设计加上这种神仙打光，谁敢信这是我家？准备直接拿着图去找工长抄作业了 ✍️\n\n#AI室内设计 #我的装修日记 #${style} #未来感家居 #高颜值家装`;
+}
+
+// 生成主流程
+genBtn.addEventListener('click', async () => {
+  document.getElementById('hero').style.display = 'none';
+  const loadEl = document.getElementById('loading');
+  loadEl.style.display = 'flex';
+  window.scrollTo({ top:0, behavior:'smooth' });
+  runSteps();
+  
+  // 模拟生成 3 张科幻/现代风格的图
+  imgs = [1040, 1048, 1070].map(s => `https://images.unsplash.com/photo-1550989460-0adf9ea622e2?q=80&w=800&auto=format&fit=crop&sig=${s}`);
+  
+  await Promise.all([ fetchAIContent(), new Promise(r => setTimeout(r, 3400)) ]);
+
+  const names = ['Angle 1 · 客厅中枢','Angle 2 · 休眠舱主卧','Angle 3 · 赛博餐厨'];
+  document.getElementById('previewGrid').innerHTML = imgs.map((u,i) => `
+    <div class="preview-card fi" style="animation-delay: ${0.1 * i}s">
+      <img src="${u}">
+      <div class="prev-overlay">
+        <div class="lock-circle">🔒</div>
+        <span class="lock-lbl">PRO UNLOCK</span>
       </div>
-    `).join("");
+      <div class="plan-tag">${names[i]}</div>
+    </div>`).join('');
 
-    document.getElementById("copyTitle").innerText = "谁懂啊！毛坯房居然被 AI 改成了顶级法式风 😭";
-    document.getElementById("copyBody").innerText = "原本以为家里这采光没救了，AI 直接给我出了这套奶油色方案！大白墙+法式石膏线，空间感直接拉满，建议所有准备装修的姐妹都去试一下这个 AI 工具，真的省下几千块设计费！✨ #装修灵感 #小众设计 #AI室内设计 #我的装修日记";
-
-    document.getElementById("result").classList.add("hidden");
-    document.getElementById("success").classList.remove("hidden");
-    window.scrollTo(0, 0);
-  }, 1500);
+  loadEl.style.display = 'none';
+  document.getElementById('result').style.display = 'block';
+  window.scrollTo({ top:0, behavior:'smooth' });
 });
+
+// 支付展示逻辑
+document.getElementById('payBtn').addEventListener('click', () => {
+  const btn = document.getElementById('payBtn');
+  btn.textContent = 'Verifying Secure Payment...'; btn.style.opacity = '.6';
+  setTimeout(() => {
+    const names = ['Angle 1 · 客厅中枢','Angle 2 · 休眠舱主卧','Angle 3 · 赛博餐厨'];
+    document.getElementById('resultGrid').innerHTML = imgs.map((u,i) => `
+      <div class="result-card fi" style="animation-delay: ${0.1 * i}s">
+        <img src="${u}">
+        <div class="result-tag">${names[i]}</div>
+      </div>`).join('');
+    document.getElementById('copyTitle').textContent = copyContent.title;
+    document.getElementById('copyBody').textContent  = copyContent.body;
+    
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('success').style.display = 'block';
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }, 1200);
+});
+
+// 重新生成文案逻辑
+function regenCopy() {
+  const btn = document.querySelector('.cbtn-out');
+  btn.textContent = 'Rewriting...';
+  setTimeout(() => {
+    document.getElementById('copyTitle').textContent = `被问疯了！这就是人类高质量 ${style} 住宅 💸`;
+    document.getElementById('copyBody').textContent = `花小钱办大事的快乐谁懂！放弃了传统全包，用 AI 重塑的空间不仅避坑，还帮我省下了巨额设计费。\n\n高级感不等于盲目堆砌，这套【${style}】方案用极简的线条和神仙光影，直接把居住体验拉升了一个纬度。快艾特你那个要装修的闺蜜来看！\n\n#AI空间重塑 #神仙户型 #${style} #装修灵感库 #独居日记`;
+    btn.textContent = '换个语气重写';
+  }, 800);
+}
+
+function doCopy() {
+  const t = document.getElementById('copyTitle').textContent;
+  const b = document.getElementById('copyBody').textContent;
+  navigator.clipboard.writeText(t+'\n\n'+b).then(() => alert('✨ 文案已复制进剪贴板！'));
+}
 
 function downloadImages() {
-  generatedImages.forEach((url, i) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Az_Design_Plan_${i+1}.jpg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  });
-}
-
-function copyText() {
-  const text = document.getElementById("copyTitle").innerText + "\n\n" + document.getElementById("copyBody").innerText;
-  navigator.clipboard.writeText(text);
-  alert("爆款文案已复制，快去发小红书吧！");
+  alert('正在打包高清 4K 原图...');
 }
 </script>
-
 </body>
 </html>
